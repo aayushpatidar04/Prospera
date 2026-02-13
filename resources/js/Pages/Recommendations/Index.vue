@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Create from './Create.vue';
 import Edit from './Edit.vue';
 import Delete from './Delete.vue';
-import { Link, Head } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import { VueGoodTable } from 'vue-good-table-next'
 import 'vue-good-table-next/dist/vue-good-table-next.css'
 
