@@ -13,6 +13,13 @@ Route::middleware(['auth:sanctum', 'role:User'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('recommendations', [HomeController::class, 'recommendations']);
+    Route::get('alerts', [HomeController::class, 'alerts']);
+    Route::get('blogs', [HomeController::class, 'blogs']);
+
+    Route::get('portfolios', [HomeController::class, 'portfolios']);
+    Route::post('portfolios', [HomeController::class, 'storePortfolio']);
+    Route::put('portfolios/{id}', [HomeController::class, 'updatePortfolio']);
+    Route::delete('portfolios/{id}', [HomeController::class, 'deletePortfolio']);
 });
 
 Route::middleware(['auth:sanctum', 'role:Admin'])->group(function () {

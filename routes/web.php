@@ -28,8 +28,13 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::post('/recommendations', [HomeController::class, 'storeRecommendation'])->name('recommendations.store');
     Route::patch('/recommendations/{id}', [HomeController::class, 'editRecommendation'])->name('recommendations.edit');
     Route::delete('/recommendations/{id}', [HomeController::class, 'destroyRecommendation'])->name('recommendations.destroy');
+    Route::post('/recommendations/{id}', [HomeController::class, 'sendAlert'])->name('recommendations.send-alert');
 
-
+    Route::get('/blogs', [HomeController::class, 'blogs'])->name('blogs.index');
+    Route::post('/blogs', [HomeController::class, 'storeBlog'])->name('blogs.store');
+    Route::post('/blogs/{id}', [HomeController::class, 'editBlog'])->name('blogs.edit');
+    Route::delete('/blogs/{id}', [HomeController::class, 'destroyBlog'])->name('blogs.destroy');
+    Route::patch('/blogs/{id}', [HomeController::class, 'publishBlog'])->name('blogs.publish');
 });
 
 require __DIR__.'/auth.php';

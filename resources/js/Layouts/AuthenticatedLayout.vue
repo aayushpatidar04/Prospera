@@ -52,6 +52,13 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     Recommendations
                                 </NavLink>
+
+                                <NavLink
+                                    :href="route('blogs.index')"
+                                    :active="route().current('blogs.index')"
+                                >
+                                    Blogs
+                                </NavLink>
                             </div>
                         </div>
 

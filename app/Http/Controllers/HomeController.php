@@ -2,19 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Alert;
+use App\Models\Blog;
 use App\Models\Recommendation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Pusher\PushNotifications\PushNotifications;
 
 class HomeController extends Controller
 {
-    public function recommendations(){
-        return Inertia::render('Recommendations/Index', [ 
-            'recommendations' => Recommendation::all() 
+    public function recommendations()
+    {
+        return Inertia::render('Recommendations/Index', [
+            'recommendations' => Recommendation::latest()->get()
         ]);
     }
 
-    public function storeRecommendation(Request $request){
+    public function storeRecommendation(Request $request)
+    {
         $request->validate([
             'stock_name' => 'required|string|max:255',
             'exchange' => 'required|in:NSE,BSE',
@@ -28,11 +34,12 @@ class HomeController extends Controller
         ]);
 
         $recommendation = Recommendation::create($request->all());
-        
+
         return redirect()->route('recommendations.index')->with('success', 'Recommendation added successfully!');
     }
 
-    public function editRecommendation(Request $request, $id){
+    public function editRecommendation(Request $request, $id)
+    {
         $request->validate([
             'stock_name' => 'required|string|max:255',
             'exchange' => 'required|in:NSE,BSE',
@@ -47,15 +54,131 @@ class HomeController extends Controller
 
         $recommendation = Recommendation::findOrFail($id);
         $recommendation->update($request->all());
-        
+
         return redirect()->route('recommendations.index')->with('success', 'Recommendation updated successfully!');
     }
 
-    public function destroyRecommendation($id){
-        $recommendation = Recommendation::findOrFail($id); 
-        
-        $recommendation->delete(); 
-        
+    public function destroyRecommendation($id)
+    {
+        $recommendation = Recommendation::findOrFail($id);
+
+        $recommendation->delete();
+
         return redirect()->route('recommendations.index')->with('success', 'Recommendation deleted successfully!');
+    }
+
+    public function sendAlert(Request $request, $id)
+    {
+        $recommendation = Recommendation::find($id);
+        $data = $request->validate([
+            'title' => 'required|string|max:255',
+            'body' => 'required|string',
+        ]);
+        $data['recommendation_id'] = $id;
+        // dd(config('keys.PUSHER_BEAMS_INSTANCE_ID'));
+        $alert = Alert::create($data);
+        // Send push notification via Pusher Beams 
+
+        $beamsClient = new PushNotifications([
+            "instanceId" => config('keys.PUSHER_BEAMS_INSTANCE_ID'),
+            "secretKey" => config('keys.PUSHER_BEAMS_SECRET_KEY'),
+        ]);
+
+        $beamsClient->publishToInterests(
+            ["hello"],
+            [
+                "web" => [
+                    "notification" => [
+                        "title" => $alert->title,
+                        "body" => $alert->body,
+                        "icon" => "https://img.icons8.com/?size=100&id=LoL4bFzqmAa0&format=png&color=000000",
+                        "deep_link" => "https://aayushpatidar04.github.io",
+                        "data" => $recommendation->toArray(),
+                    ]
+                ]
+            ]
+        );
+
+        return redirect()->route('recommendations.index')->with('success', 'Alert sent successfully!');
+    }
+
+    public function blogs()
+    {
+        return Inertia::render('Blogs/Index', [
+            'blogs' => Blog::latest()->get(),
+        ]);
+    }
+
+    public function storeBlog(Request $request)
+    {
+        $data = $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string', // HTML string 
+            'image' => 'required|image|max:2048',
+        ]);
+
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('uploads'), $filename);
+            $data['image'] = 'uploads/' . $filename;
+        }
+
+        $data['slug'] = Str::slug($data['title']);
+
+        Blog::create($data);
+        return redirect()->route('blogs.index')->with('success', 'Blog added successfully!');
+    }
+
+    public function editBlog(Request $request, $id)
+    {
+        $data = $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string', // HTML string 
+            'image' => 'nullable|image|max:2048',
+        ]);
+
+        $blog = Blog::findOrFail($id);
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('uploads'), $filename);
+            $data['image'] = 'uploads/' . $filename;
+            if ($blog->image && file_exists(public_path($blog->image))) {
+                unlink(public_path($blog->image));
+            }
+        } else { // Prevent overwriting with null 
+            unset($data['image']);
+        }
+        $data['slug'] = Str::slug($data['title']);
+
+        $blog->update($data);
+        return redirect()->route('blogs.index')->with('success', 'Blog updated successfully!');
+    }
+
+    public function destroyBlog($id)
+    {
+        $blog = Blog::findOrFail($id);
+
+        if ($blog->image && file_exists(public_path($blog->image))) {
+            unlink(public_path($blog->image));
+        }
+
+        $blog->delete();
+
+        return redirect()->route('blogs.index')->with('success', 'Blog deleted successfully!');
+    }
+
+    public function publishBlog(Request $request, $id){
+        $blog = Blog::findOrFail($id);
+
+        if($request->status === 'publish'){
+            $blog->published = true;
+        }else{
+            $blog->published = false;
+        }
+        $blog->save();
+
+        return redirect()->route('blogs.index')->with('success', 'Blog publication status updated successfully!');
     }
 }

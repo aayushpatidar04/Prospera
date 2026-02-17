@@ -37,14 +37,35 @@ const submitForm = () => {
         onSuccess: () => {
             editRecommendationModal.value = false;
             form.clearErrors();
-            form.reset();
+            form.reset({
+                stock_name: '',
+                exchange: '',
+                recommendation_type: '',
+                entry_price: '',
+                target_price: '',
+                stop_loss: '',
+                duration: '',
+                risk_level: '',
+                analyst_notes: ''
+            })
+
             alertRef.value.showAlert('Recommendation updated successfully!', 'success');
         },
         onError: () => {
             alertRef.value.showAlert('Failed to update recommendation!', 'error');
         },
         onFinish: () => {
-            form.reset()
+            form.reset({
+                stock_name: '',
+                exchange: '',
+                recommendation_type: '',
+                entry_price: '',
+                target_price: '',
+                stop_loss: '',
+                duration: '',
+                risk_level: '',
+                analyst_notes: ''
+            })
         },
     })
 }
@@ -52,7 +73,18 @@ const submitForm = () => {
 const closeModal = () => {
     editRecommendationModal.value = false;
     form.clearErrors();
-    form.reset();
+    form.reset({
+        stock_name: '',
+        exchange: '',
+        recommendation_type: '',
+        entry_price: '',
+        target_price: '',
+        stop_loss: '',
+        duration: '',
+        risk_level: '',
+        analyst_notes: ''
+    })
+
 };
 </script>
 
@@ -61,7 +93,7 @@ const closeModal = () => {
     <WarningButton @click="editRecommendation">
         Edit
     </WarningButton>
-    
+
     <Modal :show="editRecommendationModal" @close="closeModal">
         <div class="p-6">
             <h2 class="text-lg font-medium text-gray-900">

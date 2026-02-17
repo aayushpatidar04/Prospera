@@ -35,7 +35,18 @@ const submitForm = () => {
         onSuccess: () => {
             addRecommendationModal.value = false;
             form.clearErrors();
-            form.reset();
+            form.reset({
+                stock_name: '',
+                exchange: '',
+                recommendation_type: '',
+                entry_price: '',
+                target_price: '',
+                stop_loss: '',
+                duration: '',
+                risk_level: '',
+                analyst_notes: ''
+            })
+
             alertRef.value.showAlert('Recommendation added successfully!', 'success');
         },
         onError: () => {
@@ -50,7 +61,18 @@ const submitForm = () => {
 const closeModal = () => {
     addRecommendationModal.value = false;
     form.clearErrors();
-    form.reset();
+    form.reset({
+        stock_name: '',
+        exchange: '',
+        recommendation_type: '',
+        entry_price: '',
+        target_price: '',
+        stop_loss: '',
+        duration: '',
+        risk_level: '',
+        analyst_notes: ''
+    })
+
 };
 </script>
 

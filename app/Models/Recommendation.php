@@ -19,4 +19,9 @@ class Recommendation extends Model
         'risk_level',
         'analyst_notes',
     ];
+
+    public function alerts()
+    {
+        return $this->hasMany(Alert::class);
+    }
 }

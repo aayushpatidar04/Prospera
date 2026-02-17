@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Create from './Create.vue';
 import Edit from './Edit.vue';
 import Delete from './Delete.vue';
+import Alert from './Alert.vue';
 import { Head } from '@inertiajs/vue3';
 import { VueGoodTable } from 'vue-good-table-next'
 import 'vue-good-table-next/dist/vue-good-table-next.css'
@@ -43,6 +44,8 @@ const columns = [
                         <Edit :recommendation="props.row" />
                         &nbsp;
                         <Delete :id="props.row.id" />
+                        &nbsp;
+                        <Alert :id="props.row.id" />
                     </span>
                     <span v-else>
                         {{ props.formattedRow[props.column.field] }}
@@ -55,8 +58,8 @@ const columns = [
 </template>
 
 
-<style scoped>
+<style>
 [id^="vgt-select-rpp-"] {
-    appearance: auto !important;
+    background-image: none !important;
 }
 </style>
