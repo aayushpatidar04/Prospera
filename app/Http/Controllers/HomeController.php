@@ -2,16 +2,131 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\TradedStocks;
+use App\Events\UpdateNifty50;
+use App\Events\UpdateNiftybank;
 use App\Models\Alert;
 use App\Models\Blog;
 use App\Models\Recommendation;
+use App\Models\TradedStock;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Pusher\PushNotifications\PushNotifications;
 
 class HomeController extends Controller
 {
+
+    public function dashboard(Request $request)
+    {
+        $search = $request->input('search');
+
+        $query = TradedStock::select('traded_stocks.*')
+            ->join(
+                DB::raw('(SELECT symbol, MAX(timestamp) as latest_time 
+                         FROM traded_stocks 
+                         GROUP BY symbol) as latest'),
+                function ($join) {
+                    $join->on('traded_stocks.symbol', '=', 'latest.symbol')
+                        ->on('traded_stocks.timestamp', '=', 'latest.latest_time');
+                }
+            )
+            ->orderBy('timestamp', 'desc')
+            ->orderBy('traded_stocks.id', 'asc');
+
+        // 🔎 Apply search filter
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('traded_stocks.symbol', 'like', "%{$search}%")
+                    ->orWhere('traded_stocks.identifier', 'like', "%{$search}%")
+                    ->orWhere('traded_stocks.series', 'like', "%{$search}%");
+            });
+        }
+
+        return Inertia::render('Dashboard', [
+            'tradedStocks' => $query->paginate(20)->withQueryString(),
+            'filters' => $request->only('search'),
+        ]);
+    }
+
+    public function silverbeesPerformance()
+    {
+        $rows = TradedStock::where('symbol', 'SILVERBEES')
+            ->whereDate('timestamp', today())
+            ->orderBy('timestamp')
+            ->get(['timestamp', 'lastPrice']);
+
+        return response()->json($rows);
+    }
+
+    public function tataSilver()
+    {
+        $rows = TradedStock::where('symbol', 'TATSILV')
+            ->whereDate('timestamp', today())
+            ->orderBy('timestamp')
+            ->get(['timestamp', 'lastPrice']);
+
+        return response()->json($rows);
+    }
+
+    public function triggerNifty50Event()
+    {
+        $response = Http::get('https://priceapi.moneycontrol.com/pricefeed/notapplicable/inidicesindia/in%3BNSX');
+        if ($response->successful()) {
+            $data = $response->json();
+            event(new UpdateNifty50($data['data']));
+        }
+        return response()->json(['status' => 'ok']);
+    }
+
+    public function triggerNiftybankEvent()
+    {
+        $response = Http::get('https://priceapi.moneycontrol.com/pricefeed/notapplicable/inidicesindia/in%3Bnbx');
+        if ($response->successful()) {
+            $data = $response->json();
+            event(new UpdateNiftybank($data['data']));
+        }
+        return response()->json(['status' => 'ok']);
+    }
+
+    public function triggerTradedStocksEvent(Request $request)
+    {
+
+        $search = $request->input('search');
+        $page = $request->input('page', 1);
+
+        $query = TradedStock::select('traded_stocks.*')
+            ->join(
+                DB::raw('(SELECT symbol, MAX(timestamp) as latest_time 
+                     FROM traded_stocks 
+                     GROUP BY symbol) as latest'),
+                function ($join) {
+                    $join->on('traded_stocks.symbol', '=', 'latest.symbol')
+                        ->on('traded_stocks.timestamp', '=', 'latest.latest_time');
+                }
+            )
+            ->orderBy('timestamp', 'desc')
+            ->orderBy('traded_stocks.id', 'asc');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('traded_stocks.symbol', 'like', "%{$search}%")
+                    ->orWhere('traded_stocks.identifier', 'like', "%{$search}%")
+                    ->orWhere('traded_stocks.series', 'like', "%{$search}%");
+            });
+        }
+
+        $stocks = $query->paginate(20, ['*'], 'page', $page)->withQueryString();
+
+        event(new TradedStocks([
+            'tradedStocks' => $stocks
+        ]));
+
+        return response()->json(['status' => 'ok']);
+    }
+
     public function recommendations()
     {
         return Inertia::render('Recommendations/Index', [
@@ -169,12 +284,13 @@ class HomeController extends Controller
         return redirect()->route('blogs.index')->with('success', 'Blog deleted successfully!');
     }
 
-    public function publishBlog(Request $request, $id){
+    public function publishBlog(Request $request, $id)
+    {
         $blog = Blog::findOrFail($id);
 
-        if($request->status === 'publish'){
+        if ($request->status === 'publish') {
             $blog->published = true;
-        }else{
+        } else {
             $blog->published = false;
         }
         $blog->save();

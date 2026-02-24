@@ -15,9 +15,13 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified', 'role:Admin'])->name('dashboard');
+Route::get('/dashboard', [HomeController::class, 'dashboard'])->middleware(['auth', 'verified', 'role:Admin'])->name('dashboard');
+Route::get('/silverbees-performance', [HomeController::class, 'silverbeesPerformance'])->middleware(['auth', 'verified', 'role:Admin'])->name('silverbees-performance');
+Route::get('/tata-silver', [HomeController::class, 'tataSilver'])->middleware(['auth', 'verified', 'role:Admin'])->name('tata-silver');
+Route::get('/trigger-nifty50-event', [HomeController::class, 'triggerNifty50Event'])->middleware(['auth', 'verified', 'role:Admin'])->name('trigger-nifty50-event');
+Route::get('/trigger-niftybank-event', [HomeController::class, 'triggerNiftybankEvent'])->middleware(['auth', 'verified', 'role:Admin'])->name('trigger-niftybank-event');
+Route::get('/trigger-traded-stocks-event', [HomeController::class, 'triggerTradedStocksEvent'])->middleware(['auth', 'verified', 'role:Admin'])->name('trigger-traded-stocks-event');
+
 
 Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
