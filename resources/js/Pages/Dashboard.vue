@@ -4,7 +4,6 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import * as PusherPushNotifications from "@pusher/push-notifications-web";
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Chart } from 'chart.js/auto'
-import Echo from 'laravel-echo'
 import axios from 'axios'
 
 const beamsClient = new PusherPushNotifications.Client({
@@ -42,6 +41,10 @@ const tradedStocks = ref(data.tradedStocks)
 
 onMounted(() => {
     const interval = setInterval(async () => {
+        const now = new Date();
+        if (now.getHours() > 15 || (now.getHours() === 15 && now.getMinutes() >= 45)) {
+            clearInterval(interval); return;
+        }
         await axios.get('/trigger-traded-stocks-event', {
             params: {
                 page: tradedStocks.value.current_page,
@@ -113,16 +116,21 @@ onMounted(async () => {
 })
 
 function useBroadcast(channelName, eventName, triggerUrl, stateRef) {
-  const interval = setInterval(async () => {
-    await axios.get(triggerUrl)
-  }, 4000)
+    console.log('yesss');
+    const interval = setInterval(async () => {
+        const now = new Date();
+        if (now.getHours() > 15 || (now.getHours() === 15 && now.getMinutes() >= 45)) {
+            clearInterval(interval); return;
+        }
+        await axios.get(triggerUrl)
+    }, 4000)
 
-  window.Echo.channel(channelName)
-    .listen(eventName, (e) => {
-      stateRef.value = e
-    })
+    window.Echo.channel(channelName)
+        .listen(eventName, (e) => {
+            stateRef.value = e
+        })
 
-  onUnmounted(() => clearInterval(interval))
+    onUnmounted(() => clearInterval(interval))
 }
 
 
@@ -130,8 +138,8 @@ const nifty = ref({ price: null, change: null, percent: null, lastupd: null })
 const niftybank = ref({ price: null, change: null, percent: null, lastupd: null })
 
 onMounted(() => {
-  useBroadcast('update-nifty50', '.update-nifty50', '/trigger-nifty50-event', nifty)
-  useBroadcast('update-niftybank', '.update-niftybank', '/trigger-niftybank-event', niftybank)
+    useBroadcast('update-nifty50', '.update-nifty50', '/trigger-nifty50-event', nifty)
+    useBroadcast('update-niftybank', '.update-niftybank', '/trigger-niftybank-event', niftybank)
 })
 
 
