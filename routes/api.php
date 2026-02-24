@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-
+Route::delete('delete-old-data', [AuthController::class, 'cleanupOldStocks']);
 
 Route::middleware(['auth:sanctum', 'role:User'])->group(function () {
     Route::get('/profile', [AuthController::class, 'profile']);
