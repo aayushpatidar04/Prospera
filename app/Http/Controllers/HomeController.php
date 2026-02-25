@@ -5,10 +5,14 @@ namespace App\Http\Controllers;
 use App\Events\TradedStocks;
 use App\Events\UpdateNifty50;
 use App\Events\UpdateNiftybank;
+use App\Events\UpdateStock;
 use App\Models\Alert;
 use App\Models\Blog;
+use App\Models\LatestTradedStock;
 use App\Models\Recommendation;
 use App\Models\TradedStock;
+use App\Models\TradedStocksNAV;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -23,52 +27,57 @@ class HomeController extends Controller
     {
         $search = $request->input('search');
 
-        $query = TradedStock::select('traded_stocks.*')
-            ->join(
-                DB::raw('(SELECT symbol, MAX(timestamp) as latest_time 
-                         FROM traded_stocks 
-                         GROUP BY symbol) as latest'),
-                function ($join) {
-                    $join->on('traded_stocks.symbol', '=', 'latest.symbol')
-                        ->on('traded_stocks.timestamp', '=', 'latest.latest_time');
-                }
-            )
+        $query = LatestTradedStock::whereDate('timestamp', Carbon::today())
             ->orderBy('timestamp', 'desc')
-            ->orderBy('traded_stocks.id', 'asc');
+            ->orderBy('id', 'asc');
 
         // 🔎 Apply search filter
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('traded_stocks.symbol', 'like', "%{$search}%")
-                    ->orWhere('traded_stocks.identifier', 'like', "%{$search}%")
-                    ->orWhere('traded_stocks.series', 'like', "%{$search}%");
+                $q->where('symbol', 'like', "%{$search}%")
+                    ->orWhere('identifier', 'like', "%{$search}%")
+                    ->orWhere('series', 'like', "%{$search}%");
             });
+        }
+
+        $response = Http::get('https://priceapi.moneycontrol.com/pricefeed/notapplicable/inidicesindia/in%3BNSX');
+        if ($response->successful()) {
+            $data = $response->json();
+
+            $rawTimestamp = $data['data']['lastupd'] ?? now();
+
+            $carbon = $rawTimestamp instanceof Carbon ? $rawTimestamp : Carbon::parse($rawTimestamp);
+
+            $nifty = [
+                'price' => $data['data']['pricecurrent'],
+                'change' => $data['data']['CHANGE'],
+                'percent' => $data['data']['pricepercentchange'],
+                'lastupd' => $carbon->format('d M Y, h:i:s A'),
+            ];
+        }
+
+        $response = Http::get('https://priceapi.moneycontrol.com/pricefeed/notapplicable/inidicesindia/in%3BNSX');
+        if ($response->successful()) {
+            $data = $response->json();
+
+            $rawTimestamp = $data['data']['lastupd'] ?? now();
+
+            $carbon = $rawTimestamp instanceof Carbon ? $rawTimestamp : Carbon::parse($rawTimestamp);
+
+            $niftybank = [
+                'price' => $data['data']['pricecurrent'],
+                'change' => $data['data']['CHANGE'],
+                'percent' => $data['data']['pricepercentchange'],
+                'lastupd' => $carbon->format('d M Y, h:i:s A'),
+            ];
         }
 
         return Inertia::render('Dashboard', [
             'tradedStocks' => $query->paginate(20)->withQueryString(),
             'filters' => $request->only('search'),
+            'nifty' => $nifty,
+            'niftybank' => $niftybank,
         ]);
-    }
-
-    public function silverbeesPerformance()
-    {
-        $rows = TradedStock::where('symbol', 'SILVERBEES')
-            ->whereDate('timestamp', today())
-            ->orderBy('timestamp')
-            ->get(['timestamp', 'lastPrice']);
-
-        return response()->json($rows);
-    }
-
-    public function tataSilver()
-    {
-        $rows = TradedStock::where('symbol', 'TATSILV')
-            ->whereDate('timestamp', today())
-            ->orderBy('timestamp')
-            ->get(['timestamp', 'lastPrice']);
-
-        return response()->json($rows);
     }
 
     public function triggerNifty50Event()
@@ -97,34 +106,61 @@ class HomeController extends Controller
         $search = $request->input('search');
         $page = $request->input('page', 1);
 
-        $query = TradedStock::select('traded_stocks.*')
-            ->join(
-                DB::raw('(SELECT symbol, MAX(timestamp) as latest_time 
-                     FROM traded_stocks 
-                     GROUP BY symbol) as latest'),
-                function ($join) {
-                    $join->on('traded_stocks.symbol', '=', 'latest.symbol')
-                        ->on('traded_stocks.timestamp', '=', 'latest.latest_time');
-                }
-            )
+        $query = LatestTradedStock::whereDate('timestamp', Carbon::today())
             ->orderBy('timestamp', 'desc')
-            ->orderBy('traded_stocks.id', 'asc');
+            ->orderBy('id', 'asc');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('traded_stocks.symbol', 'like', "%{$search}%")
-                    ->orWhere('traded_stocks.identifier', 'like', "%{$search}%")
-                    ->orWhere('traded_stocks.series', 'like', "%{$search}%");
+                $q->where('symbol', 'like', "%{$search}%")
+                    ->orWhere('identifier', 'like', "%{$search}%")
+                    ->orWhere('series', 'like', "%{$search}%");
             });
         }
 
         $stocks = $query->paginate(20, ['*'], 'page', $page)->withQueryString();
 
         event(new TradedStocks([
-            'tradedStocks' => $stocks
+            'tradedStocks' => $stocks,
+            'timestamp' => $stocks->first()->timestamp
         ]));
 
         return response()->json(['status' => 'ok']);
+    }
+
+    public function stockView($symbol, Request $request)
+    {
+        $ltp = LatestTradedStock::where('symbol', $symbol)->first();
+
+        return Inertia::render('Stocks/Details', [
+            'ltp' => $ltp
+        ]);
+    }
+
+    public function triggerStockEvent($symbol)
+    {
+        $data = LatestTradedStock::where('symbol', $symbol)->first();
+        event(new UpdateStock($data));
+        return response()->json(['status' => 'ok']);
+    }
+
+    public function intradayPriceMovement($symbol)
+    {
+        $rows = TradedStock::where('symbol', $symbol)
+            ->whereDate('timestamp', today())
+            ->orderBy('timestamp')
+            ->get(['timestamp', 'lastPrice']);
+
+        return response()->json($rows);
+    }
+
+    public function dailyNAVTrend($symbol)
+    {
+        $rows = TradedStocksNAV::where('symbol', $symbol)
+            ->orderBy('date')
+            ->get(['date', 'lastPrice']);
+
+        return response()->json($rows);
     }
 
     public function recommendations()

@@ -48,7 +48,6 @@ class TradedStocks implements ShouldBroadcastNow
     public function broadcastWith()
     {
         $rawTimestamp = $this->data['timestamp'] ?? now();
-
         $carbon = $rawTimestamp instanceof Carbon ? $rawTimestamp : Carbon::parse($rawTimestamp);
 
         return [

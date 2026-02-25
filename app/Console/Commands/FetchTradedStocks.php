@@ -2,8 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Events\TradedStocks;
+use App\Models\LatestTradedStock;
 use App\Models\TradedStock;
+use App\Models\TradedStocksNAV;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
@@ -49,6 +50,7 @@ class FetchTradedStocks extends Command
                         'series' => $item['series'],
                         'marketType' => $item['marketType'],
                         'timestamp' => Carbon::parse($data['timestamp']),
+                        'date' => Carbon::parse($data['timestamp'])->toDateString(),
                         'pchange' => $item['pchange'],
                         'change' => $item['change'],
                         'previousClose' => $item['previousClose'],
@@ -61,9 +63,28 @@ class FetchTradedStocks extends Command
                 })->toArray();
 
                 foreach (array_chunk($rows, 500) as $chunk) {
+
+                    $tradedStockChunk = collect($chunk)->map(function ($row) { 
+                        return collect($row)->except('date')->toArray(); 
+                    })->toArray();
+
                     TradedStock::upsert(
-                        $chunk,
+                        $tradedStockChunk,
                         ['identifier', 'symbol', 'series', 'marketType', 'timestamp'], // unique keys
+                        ['pchange', 'change', 'previousClose', 'lastPrice', 'totalTradedVolume', 'issuedCap', 'totalTradedValue', 'totalMarketCap'] // fields to update
+                    );
+                    LatestTradedStock::upsert(
+                        $tradedStockChunk,
+                        ['identifier', 'symbol', 'series', 'marketType'], // unique keys
+                        ['pchange', 'change', 'previousClose', 'lastPrice', 'totalTradedVolume', 'issuedCap', 'totalTradedValue', 'totalMarketCap', 'timestamp'] // fields to update
+                    );
+
+                    $tradedStockNAVChunk = collect($chunk)->map(function ($row) { 
+                        return collect($row)->except('timestamp')->toArray(); 
+                    })->toArray();
+                    TradedStocksNAV::upsert(
+                        $tradedStockNAVChunk,
+                        ['identifier', 'symbol', 'series', 'marketType', 'date'], // unique keys
                         ['pchange', 'change', 'previousClose', 'lastPrice', 'totalTradedVolume', 'issuedCap', 'totalTradedValue', 'totalMarketCap'] // fields to update
                     );
                 }

@@ -3,7 +3,6 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import * as PusherPushNotifications from "@pusher/push-notifications-web";
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Chart } from 'chart.js/auto'
 import axios from 'axios'
 
 const beamsClient = new PusherPushNotifications.Client({
@@ -12,7 +11,9 @@ const beamsClient = new PusherPushNotifications.Client({
 
 const data = defineProps({
     tradedStocks: Object,
-    filters: Object
+    filters: Object,
+    nifty: Object,
+    niftybank: Object,
 });
 
 beamsClient.start()
@@ -68,55 +69,8 @@ const searchStocks = () => {
     router.get('/dashboard', { search: searchTerm.value }, { preserveState: true, onSuccess: (page) => { tradedStocks.value = page.props.tradedStocks } })
 }
 
-const charts = [
-    { label: 'SilverBees', endpoint: '/silverbees-performance' },
-    { label: 'TataSilver', endpoint: '/tata-silver' }
-]
-
-onMounted(async () => {
-    for (let i = 0; i < charts.length; i++) {
-        const res = await axios.get(charts[i].endpoint)
-        const data = res.data
-
-        const labels = data.map(row =>
-            new Date(row.timestamp).toLocaleTimeString('en-IN', {
-                hour: '2-digit',
-                minute: '2-digit'
-            })
-        )
-        const prices = data.map(row => row.lastPrice)
-
-        new Chart(document.getElementById(`chart-${i}`), {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [{
-                    label: charts[i].label,
-                    data: prices,
-                    borderColor: '#4F46E5',
-                    backgroundColor: 'rgba(79,70,229,0.2)',
-                    tension: 0.3,
-                    borderWidth: 1,
-                    pointRadius: 0,
-                    pointHoverRadius: 6,
-                    pointHitRadius: 10
-                }]
-            },
-            options: {
-                responsive: true,
-                interaction: { mode: 'nearest', intersect: false },
-                plugins: { tooltip: { enabled: true } },
-                scales: {
-                    x: { title: { display: false, text: 'Time' }, ticks: { display: false }, grid: { drawTicks: false } },
-                    y: { title: { display: false, text: 'Price (₹)' } }
-                }
-            }
-        })
-    }
-})
 
 function useBroadcast(channelName, eventName, triggerUrl, stateRef) {
-    console.log('yesss');
     const interval = setInterval(async () => {
         const now = new Date();
         if (now.getHours() > 15 || (now.getHours() === 15 && now.getMinutes() >= 45)) {
@@ -134,8 +88,8 @@ function useBroadcast(channelName, eventName, triggerUrl, stateRef) {
 }
 
 
-const nifty = ref({ price: null, change: null, percent: null, lastupd: null })
-const niftybank = ref({ price: null, change: null, percent: null, lastupd: null })
+const nifty = ref({ price: data.nifty?.price, change: data.nifty?.change, percent: data.nifty?.percent, lastupd: data.nifty?.lastupd })
+const niftybank = ref({ price: data.niftybank?.price, change: data.niftybank?.change, percent: data.niftybank?.percent, lastupd: data.niftybank?.lastupd })
 
 onMounted(() => {
     useBroadcast('update-nifty50', '.update-nifty50', '/trigger-nifty50-event', nifty)
@@ -208,12 +162,7 @@ onMounted(() => {
             </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
-            <div v-for="(dataset, index) in charts" :key="index" class="bg-white shadow rounded p-4">
-                <h3 class="text-lg font-semibold mb-2">{{ dataset.label }}</h3>
-                <canvas :id="`chart-${index}`"></canvas>
-            </div>
-        </div>
+
 
         <div class="my-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -239,23 +188,25 @@ onMounted(() => {
                             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                                 <div v-for="stock in tradedStocks.data" :key="stock.identifier"
                                     class="bg-white shadow rounded p-4">
-                                    <h3 class="text-lg font-semibold">{{ stock.symbol }}</h3>
-                                    <p class="text-gray-600">Last Price: ₹ {{ stock.lastPrice }}</p>
+                                    <Link :href="route('stock-view', stock.symbol)">
+                                        <h3 class="text-lg font-semibold">{{ stock.symbol }}</h3>
+                                        <p class="text-gray-600">Last Price: ₹ {{ stock.lastPrice }}</p>
 
-                                    <p :class="{
-                                        'text-green-600 font-bold': stock.pchange > 0,
-                                        'text-red-600 font-bold': stock.pchange < 0,
-                                        'text-gray-600': stock.pchange === 0
-                                    }">
-                                        {{ stock.pchange }} %
-                                    </p>
+                                        <p :class="{
+                                            'text-green-600 font-bold': stock.pchange > 0,
+                                            'text-red-600 font-bold': stock.pchange < 0,
+                                            'text-gray-600': stock.pchange === 0
+                                        }">
+                                            {{ stock.pchange }} %
+                                        </p>
 
-                                    <p class="text-gray-700">Change: <span :class="{
-                                        'text-green-600 font-bold': stock.change > 0,
-                                        'text-red-600 font-bold': stock.change < 0,
-                                        'text-gray-600': stock.change === 0
-                                    }">{{ stock.change }}</span></p>
-                                    <p class="text-gray-500">Previous Close: ₹ {{ stock.previousClose }}</p>
+                                        <p class="text-gray-700">Change: <span :class="{
+                                            'text-green-600 font-bold': stock.change > 0,
+                                            'text-red-600 font-bold': stock.change < 0,
+                                            'text-gray-600': stock.change === 0
+                                        }">{{ stock.change }}</span></p>
+                                        <p class="text-gray-500">Previous Close: ₹ {{ stock.previousClose }}</p>
+                                    </Link>
                                 </div>
                             </div>
 
