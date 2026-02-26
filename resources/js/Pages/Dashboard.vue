@@ -160,6 +160,42 @@ onMounted(() => {
                     </p>
                 </div>
             </div>
+            <div class="bg-white shadow rounded p-6 flex items-center justify-between">
+                <!-- Left side: Title -->
+                <div>
+                    <h1 class="text-2xl font-bold">Top 20 Gainers / Loosers</h1>
+                </div>
+                
+                <Link :href="route('top20')">
+                    <div class="flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-blue-600" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <!-- Circle -->
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" />
+                            <!-- Right arrow -->
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 8l4 4-4 4" />
+                        </svg>
+                    </div>
+                </Link>
+            </div>
+            <div class="bg-white shadow rounded p-6 flex items-center justify-between">
+                <!-- Left side: Title -->
+                <div>
+                    <h1 class="text-2xl font-bold">52 Week High - Low</h1>
+                </div>
+                
+                <Link :href="route('52week')">
+                    <div class="flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-blue-600" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <!-- Circle -->
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" />
+                            <!-- Right arrow -->
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 8l4 4-4 4" />
+                        </svg>
+                    </div>
+                </Link>
+            </div>
         </div>
 
 

@@ -10,6 +10,7 @@ use App\Models\Alert;
 use App\Models\Blog;
 use App\Models\LatestTradedStock;
 use App\Models\Recommendation;
+use App\Models\Top20GainerLooser;
 use App\Models\TradedStock;
 use App\Models\TradedStocksNAV;
 use Carbon\Carbon;
@@ -56,7 +57,7 @@ class HomeController extends Controller
             ];
         }
 
-        $response = Http::get('https://priceapi.moneycontrol.com/pricefeed/notapplicable/inidicesindia/in%3BNSX');
+        $response = Http::get('https://priceapi.moneycontrol.com/pricefeed/notapplicable/inidicesindia/in%3Bnbx');
         if ($response->successful()) {
             $data = $response->json();
 
@@ -161,6 +162,130 @@ class HomeController extends Controller
             ->get(['date', 'lastPrice']);
 
         return response()->json($rows);
+    }
+
+    public function top20()
+    {
+        return Inertia::render('Top20/Index', [
+            'data' => Top20GainerLooser::where('category', 'gainer')->where('sector', 'NIFTY')->get()
+        ]);
+    }
+
+    public function topStocks(Request $request)
+    {
+        $request->validate([
+            'sector' => 'required',
+            'category' => 'required',
+        ]);
+
+        $sector = $request->sector;
+
+        if ($request->category == 'gainer') {
+            $response = Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36 Edg/145.0.0.0',
+                'Accept' => '*/*',
+                'Accept-Encoding' => 'gzip, deflate',
+                'Accept-Language' => 'en-US,en;q=0.9,en-IN;q=0.8',
+                'Referer' => 'https://www.nseindia.com/market-data/stocks-traded',
+            ])->get('https://www.nseindia.com/api/live-analysis-variations?index=gainers');
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $timestamp = $data[$sector]['timestamp'];
+                $data = $data[$sector]['data'];
+
+                Top20GainerLooser::where('category', 'gainer')->where('sector', $sector)->delete();
+
+                $preparedData = collect($data)->map(function ($item) use ($sector, $timestamp) {
+                    return array_merge($item, [
+                        'category' => 'gainer',
+                        'sector'   => $sector,
+                        'created_at' => $timestamp,
+                        'updated_at' => $timestamp,
+                    ]);
+                })->toArray();
+
+                Top20GainerLooser::insert($preparedData);
+            }
+
+            $result = Top20GainerLooser::where('category', 'gainer')->where('sector', $sector)->get();
+        } else {
+            $response = Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36 Edg/145.0.0.0',
+                'Accept' => '*/*',
+                'Accept-Encoding' => 'gzip, deflate',
+                'Accept-Language' => 'en-US,en;q=0.9,en-IN;q=0.8',
+                'Referer' => 'https://www.nseindia.com/market-data/stocks-traded',
+            ])->get('https://www.nseindia.com/api/live-analysis-variations?index=loosers');
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $timestamp = $data[$sector]['timestamp'];
+                $data = $data[$sector]['data'];
+
+                Top20GainerLooser::where('category', 'looser')->where('sector', $sector)->delete();
+
+                $preparedData = collect($data)->map(function ($item) use ($sector, $timestamp) {
+                    return array_merge($item, [
+                        'category' => 'looser',
+                        'sector'   => $sector,
+                        'created_at' => $timestamp,
+                        'updated_at' => $timestamp,
+                    ]);
+                })->toArray();
+
+                Top20GainerLooser::insert($preparedData);
+            }
+
+            $result = Top20GainerLooser::where('category', 'looser')->where('sector', $sector)->get();
+        }
+
+        return Inertia::render('Top20/Index', [
+            'data' => $result
+        ]);
+    }
+
+    public function _52week(Request $request){
+        $type = $request->input('type', 'High');
+
+        if($type == 'High'){
+            $response = Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36 Edg/145.0.0.0',
+                'Accept' => '*/*',
+                'Accept-Encoding' => 'gzip, deflate',
+                'Accept-Language' => 'en-US,en;q=0.9,en-IN;q=0.8',
+                'Referer' => 'https://www.nseindia.com/market-data/stocks-traded',
+            ])->get('https://www.nseindia.com/api/live-analysis-data-52weekhighstock');
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $timestamp = $data['timestamp'];
+                $count = $data['high'];
+                $data = $data['data'];
+            }
+        }else{
+            $response = Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36 Edg/145.0.0.0',
+                'Accept' => '*/*',
+                'Accept-Encoding' => 'gzip, deflate',
+                'Accept-Language' => 'en-US,en;q=0.9,en-IN;q=0.8',
+                'Referer' => 'https://www.nseindia.com/market-data/stocks-traded',
+            ])->get('https://www.nseindia.com/api/live-analysis-data-52weeklowstock');
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $timestamp = $data['timestamp'];
+                $count = $data['low'];
+                $data = $data['data'];
+            }
+        }
+
+        return Inertia::render('52week/Index', [
+            'data' => $data,
+            'timestamp' => $timestamp,
+            'count' => $count,
+            'type' => $type
+        ]);
     }
 
     public function recommendations()

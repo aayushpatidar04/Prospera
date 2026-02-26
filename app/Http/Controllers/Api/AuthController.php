@@ -49,6 +49,8 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['email' => ['The provided credentials are incorrect.'],]);
         }
         $token = $user->createToken('mobile-app')->plainTextToken;
+        $user->auth_token = $token;
+        $user->save();
         return response()->json(['user' => $user, 'token' => $token,]);
     }
     public function profile(Request $request)

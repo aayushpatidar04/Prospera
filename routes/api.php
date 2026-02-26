@@ -20,6 +20,13 @@ Route::middleware(['auth:sanctum', 'role:User'])->group(function () {
     Route::post('portfolios', [HomeController::class, 'storePortfolio']);
     Route::put('portfolios/{id}', [HomeController::class, 'updatePortfolio']);
     Route::delete('portfolios/{id}', [HomeController::class, 'deletePortfolio']);
+
+    Route::get('stocks', [HomeController::class, 'stocks']);
+    Route::get('traded-stocks', [HomeController::class, 'tradedStocks']);
+
+    Route::get('sectors', [HomeController::class, 'sectors']);
+    Route::get('top20-gainers/{sector}', [HomeController::class, 'top20Gainers']);
+    Route::get('top20-loosers/{sector}', [HomeController::class, 'top20Loosers']);
 });
 
 Route::middleware(['auth:sanctum', 'role:Admin'])->group(function () {

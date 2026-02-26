@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Alert;
 use App\Models\Blog;
+use App\Models\LatestTradedStock;
 use App\Models\Portfolio;
 use App\Models\Recommendation;
+use App\Models\Top20GainerLooser;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 
 class HomeController extends Controller
 {
@@ -54,7 +57,7 @@ class HomeController extends Controller
     public function portfolios(Request $request)
     {
         $user = $request->user();
-        $portfolios = $user->portfolios()->latest()->get();
+        $portfolios = $user->portfolios()->with('latestTradedStock')->latest()->get();
 
         return response()->json([
             'status' => 'success',
@@ -67,7 +70,7 @@ class HomeController extends Controller
     {
         try {
             $data = $request->validate([
-                'stock' => 'required|string|max:255',
+                'stock' => 'required|string|exists:latest_traded_stocks,symbol',
                 'exchange' => 'required|in:NSE,BSE',
                 'type' => 'required|in:Buy,Sell',
                 'quantity' => 'required|integer|min:1',
@@ -127,5 +130,129 @@ class HomeController extends Controller
             'status' => 'success',
             'message' => 'Portfolio entry deleted successfully.',
         ], 200);
+    }
+
+    public function stocks()
+    {
+        $stocks = LatestTradedStock::select(['identifier', 'symbol'])->distinct('symbol')->orderBy('id')->get();
+        return response()->json([
+            'status' => 'success',
+            'message' => 'stocks fetched successfully!',
+            'data' => $stocks
+        ]);
+    }
+
+    public function tradedStocks()
+    {
+        $stocks = LatestTradedStock::whereDate('timestamp', Carbon::today())
+            ->orderBy('timestamp', 'desc')
+            ->orderBy('id', 'asc')->paginate(20);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $stocks,
+        ]);
+    }
+
+    public function sectors()
+    {
+        $response = Http::withHeaders([
+            'User-Agent' => 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36 Edg/145.0.0.0',
+            'Accept' => '*/*',
+            'Accept-Encoding' => 'gzip, deflate',
+            'Accept-Language' => 'en-US,en;q=0.9,en-IN;q=0.8',
+            'Referer' => 'https://www.nseindia.com/market-data/stocks-traded',
+        ])->get('https://www.nseindia.com/api/live-analysis-variations?index=gainers');
+
+        if ($response->successful()) {
+            $data = $response->json();
+            $legends = $data['legends'];
+
+            return response()->json([
+                'status' => 'success',
+                'sectors' => $legends
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'something went wrong, please try again later!',
+        ]);
+    }
+
+    public function top20Gainers($sector)
+    {
+        $response = Http::withHeaders([
+            'User-Agent' => 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36 Edg/145.0.0.0',
+            'Accept' => '*/*',
+            'Accept-Encoding' => 'gzip, deflate',
+            'Accept-Language' => 'en-US,en;q=0.9,en-IN;q=0.8',
+            'Referer' => 'https://www.nseindia.com/market-data/stocks-traded',
+        ])->get('https://www.nseindia.com/api/live-analysis-variations?index=gainers');
+
+        if ($response->successful()) {
+            $data = $response->json();
+            $timestamp = $data[$sector]['timestamp'];
+            $data = $data[$sector]['data'];
+
+            Top20GainerLooser::where('category', 'gainer')->where('sector', $sector)->delete();
+
+            $preparedData = collect($data)->map(function ($item) use ($sector, $timestamp) {
+                return array_merge($item, [
+                    'category' => 'gainer',
+                    'sector'   => $sector,
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
+                ]);
+            })->toArray();
+
+            Top20GainerLooser::insert($preparedData);
+
+        }
+
+        $result = Top20GainerLooser::where('category', 'gainer')->where('sector', $sector)->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $result
+        ]);
+    }
+
+    public function top20Loosers($sector)
+    {
+        $response = Http::withHeaders([
+            'User-Agent' => 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36 Edg/145.0.0.0',
+            'Accept' => '*/*',
+            'Accept-Encoding' => 'gzip, deflate',
+            'Accept-Language' => 'en-US,en;q=0.9,en-IN;q=0.8',
+            'Referer' => 'https://www.nseindia.com/market-data/stocks-traded',
+        ])->get('https://www.nseindia.com/api/live-analysis-variations?index=loosers');
+
+        if ($response->successful()) {
+            $data = $response->json();
+            $timestamp = $data[$sector]['timestamp'];
+            $data = $data[$sector]['data'];
+
+            Top20GainerLooser::where('category', 'looser')->where('sector', $sector)->delete();
+
+            $preparedData = collect($data)->map(function ($item) use ($sector, $timestamp) {
+                return array_merge($item, [
+                    'category' => 'looser',
+                    'sector'   => $sector,
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
+                ]);
+            })->toArray();
+
+            Top20GainerLooser::insert($preparedData);
+
+        }
+
+        $result = Top20GainerLooser::where('category', 'looser')->where('sector', $sector)->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $result
+        ]);
     }
 }

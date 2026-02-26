@@ -24,6 +24,10 @@ Route::get('/trigger-stock-event/{symbol}', [HomeController::class, 'triggerStoc
 Route::get('/intraday-price-movement/{symbol}', [HomeController::class, 'intradayPriceMovement'])->middleware(['auth', 'verified', 'role:Admin'])->name('silverbees-performance');
 Route::get('/daily-nav-trend/{symbol}', [HomeController::class, 'dailyNAVTrend'])->middleware(['auth', 'verified', 'role:Admin'])->name('tata-silver');
 
+Route::get('top20', [HomeController::class, 'top20'])->middleware(['auth', 'verified', 'role:Admin'])->name('top20');
+Route::get('top-stocks', [HomeController::class, 'topStocks'])->middleware(['auth', 'verified', 'role:Admin'])->name('top-stocks');
+Route::get('52week', [HomeController::class, '_52week'])->middleware(['auth', 'verified', 'role:Admin'])->name('52week');
+
 Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

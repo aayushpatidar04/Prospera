@@ -19,7 +19,17 @@ class Portfolio extends Model
         'total_value',
     ];
 
-    public function user(){
+    public function user()
+    {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function latestTradedStock()
+    {
+        return $this->hasOne(LatestTradedStock::class, 'symbol', 'stock');
+    }
+    public function getLastTradePriceAttribute()
+    {
+        return $this->latestTradedStock?->lastPrice;
     }
 }
