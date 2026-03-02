@@ -5,20 +5,22 @@ import { ref, onMounted, onUnmounted } from 'vue';
 
 
 const data = defineProps({
-    'timestamp': String,
-    'count': Number,
-    'data': Object,
-    'type': String,
+    timestamp: String,
+    count: Number,
+    data: Object,
+    type: String,
 });
 
 const timestamp = ref(data.timestamp)
 const count = ref(data.count)
 const stocks = ref(data.data)
 const type = ref(data.type)
+const loading = ref(false)
 
 let lastType = type.value
 
 const fetchData = () => {
+    loading.value = true
     router.get('/52week', { type: type.value }, {
         preserveState: true,
         onSuccess: (page) => {
@@ -26,7 +28,12 @@ const fetchData = () => {
             timestamp.value = page.props.timestamp
             count.value = page.props.count
             type.value = page.props.type
+            loading.value = false
+        },
+        onError: () => {
+            loading.value = false
         }
+
     })
 }
 
@@ -75,8 +82,18 @@ onUnmounted(() => {
                 </select>
             </div>
 
+            <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div v-for="n in 6" :key="n" class="bg-white shadow rounded-lg p-4 animate-pulse">
+                    <div class="h-6 w-24 bg-gray-300 rounded mb-2"></div>
+                    <div class="h-4 w-32 bg-gray-200 rounded mb-2"></div>
+                    <div class="h-8 w-20 bg-gray-300 rounded mb-2"></div>
+                    <div class="h-4 w-40 bg-gray-200 rounded"></div>
+                </div>
+            </div>
+
+
             <!-- Stock Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div v-for="stock in stocks" :key="stock.symbol" class="bg-white shadow rounded-lg p-4 flex flex-col">
                     <div class="flex justify-between items-center">
                         <h2 class="text-lg font-semibold">{{ stock.symbol }}</h2>
@@ -86,7 +103,9 @@ onUnmounted(() => {
 
                     <div class="mt-2">
                         <p class="text-xl font-bold text-blue-600">₹{{ stock.ltp }}</p>
-                        <p class="text-sm text-gray-600">Change: <span :class="stock.change >= 0 ? 'text-green-600' : 'text-red-600'">{{ stock.change }} ({{ stock.pChange.toFixed(2) }}%)</span></p>
+                        <p class="text-sm text-gray-600">Change: <span
+                                :class="stock.change >= 0 ? 'text-green-600' : 'text-red-600'">{{ stock.change }} ({{
+                                stock.pChange.toFixed(2) }}%)</span></p>
                         <p class="text-sm text-gray-600">Prev Close: ₹{{ stock.prevClose }}</p>
                     </div>
                     <div class="mt-2 text-sm text-gray-500">

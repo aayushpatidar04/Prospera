@@ -8,11 +8,17 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { useForm } from '@inertiajs/vue3';
 import { inject, ref } from 'vue';
+import Multiselect from 'vue-multiselect'
+import 'vue-multiselect/dist/vue-multiselect.css'
 
 const editRecommendationModal = ref(false);
 const alertRef = inject('alertRef')
 
-const data = defineProps({ recommendation: Object })
+const data = defineProps({
+    recommendation: Object, 
+    stocks: Array
+})
+
 
 const form = useForm({
     stock_name: data.recommendation?.stock_name || '',
@@ -103,8 +109,8 @@ const closeModal = () => {
                 <!-- Stock Name -->
                 <div>
                     <InputLabel for="stock_name" value="Stock Name" />
-                    <TextInput id="stock_name" v-model="form.stock_name" type="text" class="mt-1 block w-full"
-                        placeholder="Stock Name" />
+                    <Multiselect id="stock_name" v-model="form.stock_name" :options="stocks"
+                        placeholder="Select a stock" :multiple="false" :searchable="true" :close-on-select="true" />
                     <InputError :message="form.errors.stock_name" class="mt-2" />
                 </div>
 

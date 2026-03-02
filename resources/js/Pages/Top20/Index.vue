@@ -4,23 +4,29 @@ import { Head, router } from '@inertiajs/vue3';
 import { ref, onMounted, onUnmounted } from 'vue'
 
 const data = defineProps({
-    'data': Object
+    data: Object
 })
 
 const sector = ref('NIFTY')
 const category = ref('gainer')
 const stocks = ref(data.data)
 const timestamp = ref(data.data[0].created_at)
+const loading = ref(false)
 
 let lastSector = sector.value
 let lastCategory = category.value
 
 const fetchData = () => {
+    loading.value = true
     router.get('/top-stocks', { sector: sector.value, category: category.value }, {
         preserveState: true,
         onSuccess: (page) => {
             stocks.value = page.props.data
             timestamp.value = page.props.data[0].created_at
+            loading.value = false
+        },
+        onError: () => {
+            loading.value = false
         }
     })
 }
@@ -92,8 +98,17 @@ const formatDate = (ts) => {
                 <p>Updated At: {{ formatDate(timestamp) }}</p>
             </div>
 
+            <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div v-for="n in 6" :key="n" class="bg-white shadow rounded-lg p-4 animate-pulse">
+                    <div class="h-6 w-24 bg-gray-300 rounded mb-2"></div>
+                    <div class="h-4 w-32 bg-gray-200 rounded mb-2"></div>
+                    <div class="h-8 w-20 bg-gray-300 rounded mb-2"></div>
+                    <div class="h-4 w-40 bg-gray-200 rounded"></div>
+                </div>
+            </div>
+
             <!-- Stocks Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div v-for="stock in stocks" :key="stock.symbol" class="bg-white shadow rounded-lg p-4 flex flex-col">
                     <div class="flex justify-between items-center mb-2">
                         <h2 class="text-lg font-semibold">{{ stock.symbol }}</h2>

@@ -8,9 +8,15 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { useForm } from '@inertiajs/vue3';
 import { inject, ref } from 'vue';
+import Multiselect from 'vue-multiselect'
+import 'vue-multiselect/dist/vue-multiselect.css'
+
 
 const addRecommendationModal = ref(false);
 const alertRef = inject('alertRef')
+const data = defineProps({
+    stocks: Array
+})
 
 const form = useForm({
     stock_name: '',
@@ -52,9 +58,6 @@ const submitForm = () => {
         onError: () => {
             alertRef.value.showAlert('Validation failed. Please check your inputs.', 'error');
         },
-        onFinish: () => {
-            form.reset()
-        },
     })
 }
 
@@ -92,8 +95,11 @@ const closeModal = () => {
                 <!-- Stock Name -->
                 <div>
                     <InputLabel for="stock_name" value="Stock Name" />
-                    <TextInput id="stock_name" v-model="form.stock_name" type="text" class="mt-1 block w-full"
-                        placeholder="Stock Name" />
+
+                    <Multiselect id="stock_name" v-model="form.stock_name" :options="stocks"
+                        placeholder="Select a stock" :multiple="false" :searchable="true" :close-on-select="true" />
+
+
                     <InputError :message="form.errors.stock_name" class="mt-2" />
                 </div>
 

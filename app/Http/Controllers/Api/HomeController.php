@@ -132,9 +132,18 @@ class HomeController extends Controller
         ], 200);
     }
 
-    public function stocks()
+    public function stocks(Request $request)
     {
-        $stocks = LatestTradedStock::select(['identifier', 'symbol'])->distinct('symbol')->orderBy('id')->get();
+        try{
+            $request->validate([
+                'search' => 'required',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['status' => 'error', 'errors' => $e->errors()], 200);
+        }
+        
+        $stocks = LatestTradedStock::select(['identifier', 'symbol'])->where('symbol', 'like', '%' . $request->search . '%')->distinct('symbol')->orderBy('id')->get();
+
         return response()->json([
             'status' => 'success',
             'message' => 'stocks fetched successfully!',

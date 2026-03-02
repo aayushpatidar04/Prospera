@@ -9,7 +9,8 @@ import { VueGoodTable } from 'vue-good-table-next'
 import 'vue-good-table-next/dist/vue-good-table-next.css'
 
 defineProps({
-    recommendations: Array
+    recommendations: Array,
+    stocks: Array
 });
 
 const columns = [
@@ -35,13 +36,13 @@ const columns = [
         </template>
         <div class="container p-4 mx-auto">
 
-            <Create />
+            <Create :stocks="stocks"/>
 
             <VueGoodTable :columns="columns" :rows="recommendations" :search-options="{ enabled: true }"
                 :pagination-options="{ enabled: true, perPage: 10 }">
                 <template #table-row="props">
                     <span v-if="props.column.field === 'actions'">
-                        <Edit :recommendation="props.row" />
+                        <Edit :recommendation="props.row" :stocks="stocks" />
                         &nbsp;
                         <Delete :id="props.row.id" />
                         &nbsp;

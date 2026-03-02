@@ -291,7 +291,8 @@ class HomeController extends Controller
     public function recommendations()
     {
         return Inertia::render('Recommendations/Index', [
-            'recommendations' => Recommendation::latest()->get()
+            'recommendations' => Recommendation::latest()->get(),
+            'stocks' => LatestTradedStock::distinct('symbol')->orderBy('id')->pluck('symbol')
         ]);
     }
 
