@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('fetch:traded-stocks')->everyMinute()->between('9:00', '16:00')->weekdays();
 Schedule::command('traded-stocks:clear')->dailyAt('06:00');
+Schedule::command('broadcast:top-stocks')->everyMinute();
