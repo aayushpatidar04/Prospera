@@ -163,6 +163,15 @@ class HomeController extends Controller
         ]);
     }
 
+    public function stock($name){
+        $stock = LatestTradedStock::where('symbol', $name)->first();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $stock,
+        ]);
+    }
+
     public function sectors()
     {
         $response = Http::withHeaders([

@@ -23,6 +23,7 @@ Route::middleware(['auth:sanctum', 'role:User'])->group(function () {
 
     Route::get('stocks', [HomeController::class, 'stocks']);
     Route::get('traded-stocks', [HomeController::class, 'tradedStocks']);
+    Route::get('stock/{name}', [HomeController::class, 'stock']);
 
     Route::get('sectors', [HomeController::class, 'sectors']);
     Route::get('top20-gainers/{sector}', [HomeController::class, 'top20Gainers']);
