@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Events\BroadcastIndex;
 use App\Models\LatestTradedStock;
 use App\Models\TradedStock;
 use App\Models\TradedStocksNAV;
@@ -64,8 +65,8 @@ class FetchTradedStocks extends Command
 
                 foreach (array_chunk($rows, 500) as $chunk) {
 
-                    $tradedStockChunk = collect($chunk)->map(function ($row) { 
-                        return collect($row)->except('date')->toArray(); 
+                    $tradedStockChunk = collect($chunk)->map(function ($row) {
+                        return collect($row)->except('date')->toArray();
                     })->toArray();
 
                     TradedStock::upsert(
@@ -79,8 +80,8 @@ class FetchTradedStocks extends Command
                         ['pchange', 'change', 'previousClose', 'lastPrice', 'totalTradedVolume', 'issuedCap', 'totalTradedValue', 'totalMarketCap', 'timestamp'] // fields to update
                     );
 
-                    $tradedStockNAVChunk = collect($chunk)->map(function ($row) { 
-                        return collect($row)->except('timestamp')->toArray(); 
+                    $tradedStockNAVChunk = collect($chunk)->map(function ($row) {
+                        return collect($row)->except('timestamp')->toArray();
                     })->toArray();
                     TradedStocksNAV::upsert(
                         $tradedStockNAVChunk,
@@ -89,6 +90,31 @@ class FetchTradedStocks extends Command
                     );
                 }
             }
+
+            $response2 = Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36 Edg/145.0.0.0',
+                'Accept' => '*/*',
+                'Accept-Encoding' => 'gzip, deflate',
+                'Accept-Language' => 'en-US,en;q=0.9,en-IN;q=0.8',
+                'Referer' => 'https://www.nseindia.com/market-data/stocks-traded',
+            ])->get('https://www.nseindia.com/api/allIndices');
+
+            $data = $response2->json('data');
+
+            $allowed = [
+                'NIFTY 50',
+                'NIFTY NEXT 50',
+                'NIFTY BANK',
+                'NIFTY 100',
+                'NIFTY FINANCIAL SERVICES',
+            ];
+
+            $filtered = collect($data)->filter(function ($item) use ($allowed) {
+                return in_array($item['index'], $allowed);
+            })->values();
+            
+            event(new BroadcastIndex($filtered));
+
             if ($i < 2) {
                 sleep(15);
             }
