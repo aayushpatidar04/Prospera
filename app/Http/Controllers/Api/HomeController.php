@@ -134,14 +134,14 @@ class HomeController extends Controller
 
     public function stocks(Request $request)
     {
-        try{
+        try {
             $request->validate([
                 'search' => 'required',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['status' => 'error', 'errors' => $e->errors()], 200);
         }
-        
+
         $stocks = LatestTradedStock::select(['identifier', 'symbol'])->where('symbol', 'like', '%' . $request->search . '%')->distinct('symbol')->orderBy('id')->get();
 
         return response()->json([
@@ -151,11 +151,20 @@ class HomeController extends Controller
         ]);
     }
 
-    public function tradedStocks()
+    public function tradedStocks(Request $request)
     {
-        $stocks = LatestTradedStock::whereDate('timestamp', Carbon::today())
+        $query = LatestTradedStock::whereDate('timestamp', Carbon::today())
             ->orderBy('timestamp', 'desc')
-            ->orderBy('id', 'asc')->paginate(20);
+            ->orderBy('id', 'asc');
+
+        // Apply search filter if provided
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where('symbol', 'LIKE', "%{$search}%");
+        }
+
+        $stocks = $query->paginate(20);
+
 
         return response()->json([
             'status' => 'success',
@@ -163,7 +172,8 @@ class HomeController extends Controller
         ]);
     }
 
-    public function stock($name){
+    public function stock($name)
+    {
         $stock = LatestTradedStock::where('symbol', $name)->first();
 
         return response()->json([
@@ -225,7 +235,6 @@ class HomeController extends Controller
             })->toArray();
 
             Top20GainerLooser::insert($preparedData);
-
         }
 
         $result = Top20GainerLooser::where('category', 'gainer')->where('sector', $sector)->get();
@@ -263,7 +272,6 @@ class HomeController extends Controller
             })->toArray();
 
             Top20GainerLooser::insert($preparedData);
-
         }
 
         $result = Top20GainerLooser::where('category', 'looser')->where('sector', $sector)->get();
